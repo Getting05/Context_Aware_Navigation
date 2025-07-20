@@ -67,7 +67,8 @@ class Runner(object):
         self.local_network.load_state_dict(weights)
 
     def do_job(self, episode_number):
-        worker = TestWorker(self.meta_agent_id, self.local_network,episode_number, device=self.device, save_image=SAVE_GIFS, greedy=True)
+        # Pass the episode number as the map index to ensure sequential map selection
+        worker = TestWorker(self.meta_agent_id, self.local_network, episode_number, device=self.device, save_image=SAVE_GIFS, greedy=True)
         worker.work(episode_number)
 
         perf_metrics = worker.perf_metrics

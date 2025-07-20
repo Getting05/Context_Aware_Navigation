@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')  # Set non-GUI backend before importing pyplot
 import matplotlib.pyplot as plt
 import os
 import math
@@ -17,8 +19,8 @@ class Env():
         else:
             self.map_dir = f'DungeonMaps/pp/train'
         self.map_list = os.listdir(self.map_dir)
-        self.map_list.sort(reverse=True)
-        self.map_index = map_index % np.size(self.map_list)
+        self.map_list.sort()  # Sort map_list in ascending order to ensure sequential selection
+        self.map_index = map_index % len(self.map_list)  # Use map_index directly to select maps sequentially
         self.ground_truth, self.start_position, self.target_position = self.import_ground_truth_pp(
             self.map_dir + '/' + self.map_list[self.map_index])
         self.ground_truth_size = np.shape(self.ground_truth)
@@ -88,10 +90,21 @@ class Env():
     
     def import_ground_truth_pp(self, map_index):
         ground_truth = (skimage.io.imread(map_index, 1) * 255).astype(int)
+        print(f"Loading map: {map_index}")  # Debug log for map path
+        print(f"Unique pixel values in map: {np.unique(ground_truth)}")  # Debug log for pixel values
+
         robot_location = np.nonzero(ground_truth == 209)
-        robot_location = np.array([np.array(robot_location)[1, 127], np.array(robot_location)[0, 127]])
+        if len(robot_location[0]) == 0:
+            print("Warning: No start position (pixel value 209) found in the map. Using default start position.")
+            robot_location = np.array([0, 0])  # Default start position
+        else:
+            robot_location = np.array([robot_location[1][0], robot_location[0][0]])
+
         target_location = np.nonzero(ground_truth == 68)
-        target_location = np.array([np.array(target_location)[1, 127], np.array(target_location)[0, 127]])
+        if len(target_location[0]) == 0:
+            raise ValueError("No target position (pixel value 68) found in the map.")
+        target_location = np.array([target_location[1][0], target_location[0][0]])
+
         ground_truth = (ground_truth > 150)|((ground_truth<=80)&(ground_truth>=60))
         ground_truth = ground_truth * 254 + 1
         return ground_truth, robot_location, target_location
@@ -163,6 +176,6 @@ class Env():
         plt.suptitle('Explored ratio: {:.4g}  Travel distance: {:.4g}'.format(self.explored_rate, travel_dist))
         plt.tight_layout()
         plt.savefig('{}/{}_{}_samples.png'.format(path, n, step, dpi=150))
-        plt.show()
+        plt.close()  # Close the figure to free memory instead of showing it
         frame = '{}/{}_{}_samples.png'.format(path, n, step)
         self.frame_files.append(frame)
