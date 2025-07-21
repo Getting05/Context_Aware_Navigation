@@ -20,3 +20,4 @@ DECAY_STEP = 256  # not use
 SUMMARY_WINDOW = 50
 LOAD_MODEL = False  # do you want to load the model trained before
 SAVE_IMG_GAP = 500  # save image every SAVE_IMG_GAP episodes
+MAX_STEPS_PER_MAP = 350  # 每张地图最多运行的步数

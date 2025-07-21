@@ -118,8 +118,9 @@ class Graph_generator:
         return self.node_coords, self.graph.edges, self.node_utility, self.indicator, self.direction_vector
 
     def generate_uniform_points(self):
-        x = np.linspace(0, self.map_x - 1, 30).round().astype(int)
-        y = np.linspace(0, self.map_y - 1, 30).round().astype(int)
+        # 增加点的密度，从30x30增加到80x80
+        x = np.linspace(0, self.map_x - 1, 80).round().astype(int)
+        y = np.linspace(0, self.map_y - 1, 80).round().astype(int)
         t1, t2 = np.meshgrid(x, y)
         points = np.vstack([t1.T.ravel(), t2.T.ravel()]).T
         return points

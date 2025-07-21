@@ -14,6 +14,10 @@ NUM_RUN = 1
 SAVE_GIFS = True  # do you want to save GIFs
 SAVE_TRAJECTORY = True  # do you want to save per-step metrics
 SAVE_LENGTH = True  # do you want to save per-episode metrics
+MAX_STEPS = 300  # 最大步数
+MAX_STEPS_PER_MAP = 350  # 每张地图最多运行的步数
+
+# 新增详细指标收集配置
 
 # 新增详细指标收集配置
 SAVE_DETAILED_METRICS = True  # 是否保存详细指标数据
