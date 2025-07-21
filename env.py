@@ -167,12 +167,19 @@ class Env():
         plt.axis((0, self.ground_truth_size[1], self.ground_truth_size[0], 0))
         # for i in range(len(self.graph_generator.x)):
         #    plt.plot(self.graph_generator.x[i], self.graph_generator.y[i], 'tan', zorder=1)  # plot edges will take long time
-        plt.scatter(self.node_coords[:, 0], self.node_coords[:, 1], c=self.node_utility, zorder=5)
-        plt.scatter(self.frontiers[:, 0], self.frontiers[:, 1], c='r', s=2, zorder=3)
-        plt.plot(self.xTarget, self.yTarget, 'o', markersize = 20)
-        plt.plot(self.xPoints, self.yPoints, 'b', linewidth=2)
-        plt.plot(self.xPoints[-1], self.yPoints[-1], 'mo', markersize=8)
-        plt.plot(self.xPoints[0], self.yPoints[0], 'co', markersize=8)
+        # 不显示节点点位
+        # plt.scatter(self.node_coords[:, 0], self.node_coords[:, 1], c=self.node_utility, zorder=5)
+        # plt.scatter(self.frontiers[:, 0], self.frontiers[:, 1], c='r', s=2, zorder=3)
+        
+        # 保留目标点和路径，使用英文标签避免中文字体问题
+        plt.plot(self.xTarget, self.yTarget, 'o', color='green', markersize=20, label='Target')
+        plt.plot(self.xPoints, self.yPoints, '-', color='blue', linewidth=3, label='Path')
+        plt.plot(self.xPoints[-1], self.yPoints[-1], 'o', color='magenta', markersize=10, label='Current Position')
+        plt.plot(self.xPoints[0], self.yPoints[0], 'o', color='cyan', markersize=10, label='Start Position')
+        
+        # 添加图例
+        plt.legend(loc='upper right')
+        
         plt.suptitle('Explored ratio: {:.4g}  Travel distance: {:.4g}'.format(self.explored_rate, travel_dist))
         plt.tight_layout()
         plt.savefig('{}/{}_{}_samples.png'.format(path, n, step, dpi=150))
