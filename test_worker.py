@@ -5,9 +5,11 @@ import copy
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+import time
 from env import Env
 from model import PolicyNet
 from test_parameter import *
+from metrics_collector import MetricsCollector
 
 
 class TestWorker:
@@ -24,16 +26,43 @@ class TestWorker:
         self.travel_dist = 0
         self.robot_position = self.env.start_position
         self.perf_metrics = dict()
+        
+        # 初始化指标收集器
+        self.metrics_collector = MetricsCollector(self.global_step, self.env)
 
     def run_episode(self, curr_episode):
         done = False
+        step = 0
 
         observations = self.get_observations()
+        # 初始位置记录到指标收集器
+        self.metrics_collector.update_position(self.robot_position)
+        
         for i in range(128):
+            # 记录计算时间开始
+            computation_start = time.perf_counter()
+            
             next_position, action_index = self.select_node(observations)
+
+            # 记录计算时间结束
+            computation_end = time.perf_counter()
+            computation_time = computation_end - computation_start
 
             reward, done, self.robot_position, self.travel_dist = self.env.step(self.robot_position, next_position,
                                                                                 self.travel_dist)
+
+            # 更新指标收集器
+            step_distance = self.metrics_collector.update_position(
+                self.robot_position, reward=reward, done=done
+            )
+            
+            # 保存单步指标
+            self.metrics_collector.save_step_metrics(
+                step=i, 
+                episode=curr_episode, 
+                reward=reward, 
+                computation_time=computation_time
+            )
 
             observations = self.get_observations()
 
@@ -59,6 +88,9 @@ class TestWorker:
 
             if done:
                 break
+
+        # 打印指标摘要
+        self.metrics_collector.print_summary()
 
         self.perf_metrics['travel_dist'] = self.travel_dist
         self.perf_metrics['explored_rate'] = self.env.explored_rate

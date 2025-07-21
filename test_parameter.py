@@ -14,3 +14,10 @@ NUM_RUN = 1
 SAVE_GIFS = True  # do you want to save GIFs
 SAVE_TRAJECTORY = True  # do you want to save per-step metrics
 SAVE_LENGTH = True  # do you want to save per-episode metrics
+
+# 新增详细指标收集配置
+SAVE_DETAILED_METRICS = True  # 是否保存详细指标数据
+METRICS_DIR = 'results/detailed_metrics'  # 详细指标保存目录
+ROBOT_RADIUS = 10  # 机器人半径（像素），用于计算覆盖面积
+COLLISION_COOLDOWN = 0.1  # 碰撞检测冷却时间（秒）
+PRINT_STEP_METRICS = False  # 是否打印每步的指标（调试用）
