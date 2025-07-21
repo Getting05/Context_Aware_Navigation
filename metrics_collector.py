@@ -32,7 +32,7 @@ class MetricsCollector:
             'current_acceleration', 'avg_acceleration', 'current_jerk', 'avg_jerk',
             'covered_cells_count', 'total_free_cells', 'CR', 'redundant_cells',
             'total_visited_cells', 'SR', 'collision_count', 'computation_time_step',
-            'total_computation_time', 'task_time', 'success_rate', 'reward'
+            'total_computation_time', 'task_time', 'success_rate', 'reward', 'tcr'
         ]
         
         # 初始化CSV文件
@@ -257,7 +257,8 @@ class MetricsCollector:
             'total_computation_time': self.total_computation_time,
             'task_time': task_time,
             'success_rate': self.success_rate,
-            'reward': reward
+            'reward': reward,
+            'tcr': self.env.get_tcr()  # 添加任务完成率
         }
         
         return metrics
@@ -279,11 +280,13 @@ class MetricsCollector:
         avg_velocity = np.mean(self.velocities) if self.velocities else 0.0
         avg_acceleration = np.mean(np.abs(self.accelerations)) if self.accelerations else 0.0
         avg_jerk = np.mean(np.abs(self.jerks)) if self.jerks else 0.0
+        tcr = self.env.get_tcr()
         
         print(f"\n=== 地图 {self.map_index} 测试结果摘要 ===")
         print(f"总移动距离: {total_distance:.2f} 像素")
         print(f"覆盖率 (CR): {coverage_rate:.4f}")
         print(f"清扫冗余度 (SR): {redundancy_rate:.4f}")
+        print(f"任务完成率 (TCR): {tcr:.4f}")
         print(f"碰撞次数: {self.collision_count}")
         print(f"探索率: {self.env.explored_rate:.4f}")
         print(f"平均速度: {avg_velocity:.2f} 像素/秒")
@@ -291,5 +294,7 @@ class MetricsCollector:
         print(f"平均加加速度: {avg_jerk:.2f} 像素/秒³")
         print(f"任务完成率: {self.success_rate:.2f}")
         print(f"总计算时间: {self.total_computation_time:.4f} 秒")
+        print(f"S类目标: {len(self.env.completed_sweeping)}/{len(self.env.sweeping_objects)} 完成")
+        print(f"G类目标: {len(self.env.completed_grasping)}/{len(self.env.grasping_objects)} 完成")
         print(f"数据已保存到: {self.csv_filename}")
         print("=" * 50)

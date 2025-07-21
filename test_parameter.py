@@ -17,6 +17,11 @@ SAVE_LENGTH = True  # do you want to save per-episode metrics
 MAX_STEPS = 300  # 最大步数
 MAX_STEPS_PER_MAP = 350  # 每张地图最多运行的步数
 
+# 任务目标配置
+NUM_SWEEPING_OBJECTS = 10  # S类目标数量
+NUM_GRASPING_OBJECTS = 10  # G类目标数量
+TASK_COMPLETION_RADIUS = 15  # 任务完成半径（像素）
+
 # 新增详细指标收集配置
 
 # 新增详细指标收集配置

@@ -3,6 +3,8 @@ matplotlib.use('Agg')  # Set non-GUI backend before importing pyplot
 import matplotlib.pyplot as plt
 import os
 import math
+import numpy as np
+import copy
 import skimage.io
 from skimage.measure import block_reduce
 from scipy import *
@@ -35,7 +37,19 @@ class Env():
         self.graph_generator.route_node.append(self.start_position)
         self.node_coords, self.graph, self.node_utility, self.indicator, self.direction_vector = None, None, None, None, None
         
+        # 初始化任务目标
+        self.sweeping_objects = []  # S类目标列表
+        self.grasping_objects = []  # G类目标列表
+        self.completed_sweeping = []  # 已完成的S类目标
+        self.completed_grasping = []  # 已完成的G类目标
+        self.task_completion_radius = 3  # 任务完成半径
+        
+        # 在begin()之后生成任务目标
         self.begin()
+        
+        # 设置随机种子以保证可重现性
+        np.random.seed(42 + map_index)
+        self.generate_task_objects()
 
         self.plot = plot
         self.frame_files = []
@@ -77,7 +91,15 @@ class Env():
                                                func=np.min)
         frontiers = self.find_frontier()
         self.explored_rate = self.evaluate_exploration_rate()
+        
+        # 检查任务目标完成情况
+        newly_completed_s, newly_completed_g = self.check_task_completion(robot_position)
+        
         reward, done = self.calculate_reward(astar_dist_cur_to_target, astar_dist_next_to_target, dist_to_target)
+        
+        # 为完成任务目标提供额外奖励
+        reward += (newly_completed_s + newly_completed_g) * 5.0  # 每完成一个任务目标+5奖励
+        
         if self.plot:
             self.xPoints.append(robot_position[0])
             self.yPoints.append(robot_position[1])
@@ -177,12 +199,130 @@ class Env():
         plt.plot(self.xPoints[-1], self.yPoints[-1], 'o', color='magenta', markersize=10, label='Current Position')
         plt.plot(self.xPoints[0], self.yPoints[0], 'o', color='cyan', markersize=10, label='Start Position')
         
+        # 绘制任务目标
+        # S类目标（清扫）- 未完成的用红色正方形，已完成的用灰色正方形
+        for i, s_target in enumerate(self.sweeping_objects):
+            color = 'gray' if i in self.completed_sweeping else 'red'
+            plt.plot(s_target[0], s_target[1], 's', color=color, markersize=8, 
+                    label='S-targets (completed)' if i in self.completed_sweeping and i == 0 else 
+                          ('S-targets' if i == 0 and i not in self.completed_sweeping else ''))
+        
+        # G类目标（抓取）- 未完成的用橙色三角形，已完成的用灰色三角形
+        for i, g_target in enumerate(self.grasping_objects):
+            color = 'gray' if i in self.completed_grasping else 'orange'
+            plt.plot(g_target[0], g_target[1], '^', color=color, markersize=8,
+                    label='G-targets (completed)' if i in self.completed_grasping and i == 0 else
+                          ('G-targets' if i == 0 and i not in self.completed_grasping else ''))
+        
         # 添加图例
         plt.legend(loc='upper right')
         
-        plt.suptitle('Explored ratio: {:.4g}  Travel distance: {:.4g}'.format(self.explored_rate, travel_dist))
+        # 更新标题，包含TCR信息
+        tcr = self.get_tcr()
+        plt.suptitle('Explored: {:.4g}  Distance: {:.4g}  TCR: {:.4g}'.format(
+            self.explored_rate, travel_dist, tcr))
         plt.tight_layout()
         plt.savefig('{}/{}_{}_samples.png'.format(path, n, step, dpi=150))
         plt.close()  # Close the figure to free memory instead of showing it
         frame = '{}/{}_{}_samples.png'.format(path, n, step)
         self.frame_files.append(frame)
+    
+    def generate_task_objects(self):
+        """
+        在地图的自由区域随机生成S类和G类任务目标
+        """
+        # 获取自由区域的坐标点
+        free_cells = self.free_cells()
+        
+        # 从test_parameter导入参数
+        from test_parameter import NUM_SWEEPING_OBJECTS, NUM_GRASPING_OBJECTS, TASK_COMPLETION_RADIUS
+        
+        if len(free_cells) < NUM_SWEEPING_OBJECTS + NUM_GRASPING_OBJECTS:
+            print(f"警告：可用自由区域点数不足 ({len(free_cells)} < {NUM_SWEEPING_OBJECTS + NUM_GRASPING_OBJECTS})，将使用所有可用点")
+            num_s_targets = min(len(free_cells) // 2, NUM_SWEEPING_OBJECTS)
+            num_g_targets = min(len(free_cells) - num_s_targets, NUM_GRASPING_OBJECTS)
+        else:
+            num_s_targets = NUM_SWEEPING_OBJECTS
+            num_g_targets = NUM_GRASPING_OBJECTS
+        
+        # 设置任务完成半径
+        self.task_completion_radius = TASK_COMPLETION_RADIUS
+        
+        # 随机选择位置放置目标，确保不重复，并且远离起点和终点
+        excluded_positions = [self.start_position, self.target_position]
+        
+        # 筛选出距离起点和终点足够远的自由区域
+        valid_positions = []
+        for pos in free_cells:
+            too_close = False
+            for exclude_pos in excluded_positions:
+                if np.linalg.norm(pos - exclude_pos) < 30:  # 至少距离30像素
+                    too_close = True
+                    break
+            if not too_close:
+                valid_positions.append(pos)
+        
+        if len(valid_positions) < num_s_targets + num_g_targets:
+            print(f"警告：有效位置不足，使用原始自由区域")
+            valid_positions = free_cells.tolist()
+        
+        # 随机选择位置放置目标，确保不重复
+        selected_indices = np.random.choice(len(valid_positions), 
+                                          size=min(len(valid_positions), num_s_targets + num_g_targets), 
+                                          replace=False)
+        selected_positions = np.array(valid_positions)[selected_indices]
+        
+        # 分配S类和G类目标
+        actual_s_targets = min(len(selected_positions) // 2, num_s_targets)
+        self.sweeping_objects = selected_positions[:actual_s_targets].tolist()
+        self.grasping_objects = selected_positions[actual_s_targets:actual_s_targets + min(len(selected_positions) - actual_s_targets, num_g_targets)].tolist()
+        
+        print(f"生成了 {len(self.sweeping_objects)} 个S类目标和 {len(self.grasping_objects)} 个G类目标")
+
+    def check_task_completion(self, robot_position):
+        """
+        检查机器人当前位置是否完成了任何任务目标
+        
+        Args:
+            robot_position: 机器人当前位置
+            
+        Returns:
+            tuple: (新完成的S类目标数量, 新完成的G类目标数量)
+        """
+        newly_completed_s = 0
+        newly_completed_g = 0
+        
+        # 检查S类目标
+        for i, s_target in enumerate(self.sweeping_objects):
+            if i not in self.completed_sweeping:
+                distance = np.linalg.norm(robot_position - np.array(s_target))
+                if distance <= self.task_completion_radius:
+                    self.completed_sweeping.append(i)
+                    newly_completed_s += 1
+                    print(f"完成S类目标 {i+1}/{len(self.sweeping_objects)} 在位置 {s_target}")
+        
+        # 检查G类目标
+        for i, g_target in enumerate(self.grasping_objects):
+            if i not in self.completed_grasping:
+                distance = np.linalg.norm(robot_position - np.array(g_target))
+                if distance <= self.task_completion_radius:
+                    self.completed_grasping.append(i)
+                    newly_completed_g += 1
+                    print(f"完成G类目标 {i+1}/{len(self.grasping_objects)} 在位置 {g_target}")
+        
+        return newly_completed_s, newly_completed_g
+
+    def get_tcr(self):
+        """
+        计算任务完成率 (Task Completion Rate)
+        
+        Returns:
+            float: TCR值 (0.0 到 1.0)
+        """
+        total_tasks = len(self.sweeping_objects) + len(self.grasping_objects)
+        completed_tasks = len(self.completed_sweeping) + len(self.completed_grasping)
+        
+        if total_tasks == 0:
+            return 1.0
+        
+        return completed_tasks / total_tasks
