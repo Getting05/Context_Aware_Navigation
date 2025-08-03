@@ -32,7 +32,8 @@ class MetricsCollector:
             'current_acceleration', 'avg_acceleration', 'current_jerk', 'avg_jerk',
             'covered_cells_count', 'total_free_cells', 'CR', 'redundant_cells',
             'total_visited_cells', 'SR', 'collision_count', 'computation_time_step',
-            'total_computation_time', 'task_time', 'success_rate', 'reward', 'tcr'
+            'total_computation_time', 'task_time', 'success_rate', 'reward', 'tcr',
+            'tcrs', 'tcrg'
         ]
         
         # 初始化CSV文件
@@ -258,7 +259,9 @@ class MetricsCollector:
             'task_time': task_time,
             'success_rate': self.success_rate,
             'reward': reward,
-            'tcr': self.env.get_tcr()  # 添加任务完成率
+            'tcr': self.env.get_tcr(),  # 任务完成率
+            'tcrs': self.env.get_tcrs(),  # 清扫任务完成率
+            'tcrg': self.env.get_tcrg()  # 抓取任务完成率
         }
         
         return metrics
@@ -281,12 +284,16 @@ class MetricsCollector:
         avg_acceleration = np.mean(np.abs(self.accelerations)) if self.accelerations else 0.0
         avg_jerk = np.mean(np.abs(self.jerks)) if self.jerks else 0.0
         tcr = self.env.get_tcr()
+        tcrs = self.env.get_tcrs()
+        tcrg = self.env.get_tcrg()
         
         print(f"\n=== 地图 {self.map_index} 测试结果摘要 ===")
         print(f"总移动距离: {total_distance:.2f} 像素")
         print(f"覆盖率 (CR): {coverage_rate:.4f}")
         print(f"清扫冗余度 (SR): {redundancy_rate:.4f}")
         print(f"任务完成率 (TCR): {tcr:.4f}")
+        print(f"清扫任务完成率 (TCRs): {tcrs:.4f}")
+        print(f"抓取任务完成率 (TCRg): {tcrg:.4f}")
         print(f"碰撞次数: {self.collision_count}")
         print(f"探索率: {self.env.explored_rate:.4f}")
         print(f"平均速度: {avg_velocity:.2f} 像素/秒")

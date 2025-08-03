@@ -217,10 +217,12 @@ class Env():
         # 添加图例
         plt.legend(loc='upper right')
         
-        # 更新标题，包含TCR信息
+        # 更新标题，包含TCR、TCRs和TCRg信息
         tcr = self.get_tcr()
-        plt.suptitle('Explored: {:.4g}  Distance: {:.4g}  TCR: {:.4g}'.format(
-            self.explored_rate, travel_dist, tcr))
+        tcrs = self.get_tcrs()
+        tcrg = self.get_tcrg()
+        plt.suptitle('Explored: {:.4g}  Distance: {:.4g}  TCR: {:.4g}  TCRs: {:.4g}  TCRg: {:.4g}'.format(
+            self.explored_rate, travel_dist, tcr, tcrs, tcrg))
         plt.tight_layout()
         plt.savefig('{}/{}_{}_samples.png'.format(path, n, step, dpi=150))
         plt.close()  # Close the figure to free memory instead of showing it
@@ -326,3 +328,27 @@ class Env():
             return 1.0
         
         return completed_tasks / total_tasks
+
+    def get_tcrs(self):
+        """
+        计算清扫任务完成率 (Sweep Task Completion Rate)
+        
+        Returns:
+            float: TCRs值 (0.0 到 1.0)
+        """
+        if len(self.sweeping_objects) == 0:
+            return 1.0
+        
+        return len(self.completed_sweeping) / len(self.sweeping_objects)
+
+    def get_tcrg(self):
+        """
+        计算抓取任务完成率 (Grasp Task Completion Rate)
+        
+        Returns:
+            float: TCRg值 (0.0 到 1.0)
+        """
+        if len(self.grasping_objects) == 0:
+            return 1.0
+        
+        return len(self.completed_grasping) / len(self.grasping_objects)
